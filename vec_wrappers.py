@@ -483,44 +483,47 @@ def gen_vector_wrappers():
 
     # }}}
 
-    # {{{ formta
+    # {{{ formta, formmp
 
-    for dp_or_no in ["", "_dp"]:
-        for dims in [2, 3]:
-            for eqn in [cgh.Laplace(dims), cgh.Helmholtz(dims)]:
-                func_name = f"{eqn.lh_letter()}{dims}dformta{dp_or_no}"
-                gen_vector_wrapper(func_name,
-                Template("""
-                        integer ier(nvcount)
-                        % if eqn.lh_letter() == "h":
-                            complex *16 zk
-                        % endif
-                        real *8 rscale
-                        real *8 sources(${dims}, *INDIRECT_MANY)
+    # P2L (formta) and P2M (formmp) share identical argument patterns
+    # in fmmlib, so both get the same indirect-many wrappers.
+    for form_what in ["formta", "formmp"]:
+        for dp_or_no in ["", "_dp"]:
+            for dims in [2, 3]:
+                for eqn in [cgh.Laplace(dims), cgh.Helmholtz(dims)]:
+                    func_name = f"{eqn.lh_letter()}{dims}d{form_what}{dp_or_no}"
+                    gen_vector_wrapper(func_name,
+                    Template("""
+                            integer ier(nvcount)
+                            % if eqn.lh_letter() == "h":
+                                complex *16 zk
+                            % endif
+                            real *8 rscale
+                            real *8 sources(${dims}, *INDIRECT_MANY)
 
-                        % if dp_or_no:
-                            complex *16 dipstr(*INDIRECT_MANY)
-                            %if not (eqn.lh_letter() == "l" and dims == 2):
-                                real *8 dipvec(${dims}, *INDIRECT_MANY)
-                            %endif
-                        % else:
-                            complex *16 charge(*INDIRECT_MANY)
-                        % endif
+                            % if dp_or_no:
+                                complex *16 dipstr(*INDIRECT_MANY)
+                                %if not (eqn.lh_letter() == "l" and dims == 2):
+                                    real *8 dipvec(${dims}, *INDIRECT_MANY)
+                                %endif
+                            % else:
+                                complex *16 charge(*INDIRECT_MANY)
+                            % endif
 
-                        integer nsources(*INDIRECT_MANY)
-                        real *8 centers(${dims}, *INDIRECT)
-                        integer nterms
-                        complex *16 expn(${eqn.expansion_dims("nterms")}, nvcount)
-                        """, strict_undefined=True).render(
-                            dims=dims,
-                            eqn=eqn,
-                            dp_or_no=dp_or_no,
-                            ),
-                        ["ier", "expn"],
-                        output_reductions={"expn": "sum", "ier": "max"},
-                        tmp_init={"ier": "0"},
-                        vec_func_name=f"{func_name}_imany",
-                        out_only_args=("ier", "expn"))
+                            integer nsources(*INDIRECT_MANY)
+                            real *8 centers(${dims}, *INDIRECT)
+                            integer nterms
+                            complex *16 expn(${eqn.expansion_dims("nterms")}, nvcount)
+                            """, strict_undefined=True).render(
+                                dims=dims,
+                                eqn=eqn,
+                                dp_or_no=dp_or_no,
+                                ),
+                            ["ier", "expn"],
+                            output_reductions={"expn": "sum", "ier": "max"},
+                            tmp_init={"ier": "0"},
+                            vec_func_name=f"{func_name}_imany",
+                            out_only_args=("ier", "expn"))
 
     # }}}
 
